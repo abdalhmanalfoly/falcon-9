@@ -217,7 +217,7 @@ let rocketSpeed = 2;
 let firstStage, secondStage, fairing;
 
 // تحميل الموديل
-loader.load("/falcon_9_-_spacex.glb", (gltf) => {
+loader.load("/public/falcon_9_-_spacex.glb", (gltf) => {
   rocket = gltf.scene;
   rocket.scale.setScalar(0.06);
   rocket.position.set(0, 0, 0);
@@ -278,7 +278,7 @@ renderer.setAnimationLoop(() => {
 
 
 loader.load(
-  "/international_space_station.glb",
+  "/public/international_space_station.glb",
   (gltf) => {
     station = gltf.scene;
     station.scale.setScalar(1); // تصغير المحطة
@@ -477,7 +477,7 @@ camera.add(listener);
 
 const sound = new THREE.Audio(listener);
 const audioLoader = new THREE.AudioLoader();
-audioLoader.load('./ambient-soundscapes-007-space-atmosphere-304974.mp3', (buffer) => {
+audioLoader.load('./public/ambient-soundscapes-007-space-atmosphere-304974.mp3', (buffer) => {
   sound.setBuffer(buffer);
   sound.setLoop(true);   // يخلي الصوت يعيد نفسه
   sound.setVolume(0.5);  // مستوى الصوت
