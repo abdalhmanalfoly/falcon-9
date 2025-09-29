@@ -173,6 +173,98 @@ body {
       <button class="btn secondary" id="pauseBtn">إيقاف</button>
       <button class="btn secondary" id="resetBtn">إعادة</button>
     </div>
+<!--new edite today-->
+
+
+<!-- strat Ahmed Amir-->
+  <!-- لوحة التحكم -->
+<div id="controls-container" style="
+  position: fixed;
+  bottom: 50px;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 40px;
+  z-index: 999;
+">
+
+  <!-- أزرار الأسهم (يسار) -->
+  <div id="arrows" style="
+    display: grid;
+    grid-template-columns: repeat(3, 60px);
+    grid-gap: 10px;
+    justify-items: center;
+    align-items: center;
+  ">
+    <div></div>
+    <button class="ctrl-btn arrow-up" data-key="ArrowUp">↑</button>
+    <div></div>
+
+    <!-- الأماكن متبادلة -->
+    <button class="ctrl-btn" data-key="ArrowRight">→</button>
+    <button class="ctrl-btn" data-key="ArrowDown">↓</button>
+    <button class="ctrl-btn" data-key="ArrowLeft">←</button>
+  </div>
+
+  <!-- أزرار WASD + Q/E (ناحية اليمين شوية) -->
+  <div style="flex: 1; display: flex; justify-content: center;">
+    <div id="wasd" style="
+      display: grid;
+      grid-template-columns: repeat(3, 60px);
+      grid-gap: 10px;
+      justify-items: center;
+      align-items: center;
+      transform: translateX(80px); /* نزحلقهم لليمين */
+    ">
+      <div></div>
+      <button class="ctrl-btn" data-key="KeyW">W</button>
+      <div></div>
+
+      <!-- عكسنا مكان A و D -->
+      <button class="ctrl-btn" data-key="KeyD">D</button>
+      <button class="ctrl-btn" data-key="KeyS">S</button>
+      <button class="ctrl-btn" data-key="KeyA">A</button>
+
+      <!-- Q / E (متبدلين من قبل) -->
+      <button class="ctrl-btn" data-key="KeyE">E</button>
+      <div></div>
+      <button class="ctrl-btn" data-key="KeyQ">Q</button>
+    </div>
+  </div>
+
+  <!-- فاصل علشان يوازن الشكل -->
+  <div style="width:60px"></div>
+</div>
+
+<style>
+  .ctrl-btn {
+    width: 60px;
+    height: 60px;
+    font-size: 20px;
+    font-weight: bold;
+    border-radius: 10px;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    cursor: pointer;
+    user-select: none;
+  }
+  .ctrl-btn:active {
+    background: rgba(0, 200, 255, 0.6);
+  }
+
+  /* نزّل السهم ↑ شوية */
+  .arrow-up {
+    margin-top: 50px;
+  }
+</style>
+  <!-- end Ahmed Amir-->
+
+<!--new edite today-->
+
+
+
 
     <!-- Status bar -->
     <div class="statusbar" id="statusbar">⏳ جاري التحميل...</div>
