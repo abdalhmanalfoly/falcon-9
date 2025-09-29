@@ -220,61 +220,24 @@ let firstStage, secondStage, fairing;
 loader.load("/public/falcon_9_-_spacex.glb", (gltf) => {
   rocket = gltf.scene;
   rocket.scale.setScalar(0.06);
-  rocket.position.set(0, 0, 0);
+  rocket.position.set(0, 2.5, 0); // ضع الصاروخ فوق منصة الإطلاق
 
-  // نفترض الموديل مقسوم: firstStage, secondStage, fairing
   firstStage = rocket.getObjectByName("FirstStage");
   secondStage = rocket.getObjectByName("SecondStage");
   fairing = rocket.getObjectByName("Fairing");
 
   scene.add(rocket);
+
+  // إنشاء نسخة Lower Stage ولكن لا تُظهرها إلا عند الفصل
+  lowerStage = firstStage.clone();
+  lowerStage.visible = false; 
+  scene.add(lowerStage);
+
   checkReady();
 });
 
-// داخل loop
-renderer.setAnimationLoop(() => {
-  const t = (performance.now() - startTime) / 1000;
 
-  if (launch && rocket) {
-    if (stage === 1) { 
-      // 🚀 مرحلة الإقلاع
-      rocket.position.y += rocketSpeed;
-      rocketSpeed += 1;
-      if (t > 60) { 
-        stage = 2; 
-        statusbar.textContent = "انفصال المرحلة الأولى"; 
-      }
-    }
 
-    if (stage === 2) {
-      // 💥 انفصال المرحلة الأولى
-      if (firstStage) firstStage.position.y -= 0.1; // تسقط لأسفل
-      if (secondStage) secondStage.position.y += 0.05; // تكمل
-      if (t > 90) { 
-        stage = 3; 
-        statusbar.textContent = "انفصال الغطاء"; 
-      }
-    }
-
-    if (stage === 3) {
-      // 🪐 انفصال الغطاء
-      if (fairing) fairing.visible = false;
-      secondStage.position.y += 0.05;
-      if (t > 120) { 
-        stage = 4; 
-        statusbar.textContent = "التوجه نحو المحطة الدولية"; 
-      }
-    }
-
-    if (stage === 4) {
-      // 🔗 مرحلة التشابك
-      secondStage.position.y += 0.02;
-      // هنا ممكن تضيف حركة docking للـ ISS
-    }
-  }
-
-  renderer.render(scene, camera);
-});
 
 
 loader.load(
@@ -338,16 +301,22 @@ function setRealisticPositions() {
 }
 
 // تقدر تسمح للمستخدم بزيادة/نقص المقياس (simScale) عبر واجهة لاحقاً
-// أزرار التحكم
+// أزرار 
 startBtn.addEventListener("click", () => {
   if (!rocket || !station) return;
   launch = true;
+  stage = 0; // نعيد المرحلة للبداية
   startTime = performance.now();
   startBtn.disabled = true;
   pauseBtn.disabled = false;
-  statusbar.textContent = "🚀 الإقلاع جاري...";
   flameSprite.visible = true;
+  statusbar.textContent = "🚀 الإقلاع جاري..."; // رسالة مباشرة عند البداية
+
+  if (!sound.isPlaying) {
+    sound.play();
+  }
 });
+
 
 pauseBtn.addEventListener("click", () => {
   launch = false;
@@ -377,10 +346,23 @@ resetBtn.addEventListener("click", () => {
 function separateStage() {
   if (!lowerStage || separated) return;
   separated = true;
-  statusbar.textContent = "🔻 فصل المرحلة الأولى";
-  // نُعطيها سرعة صغيرة للخلف/لأسفل
-  lowerStage.userData.velocity = new THREE.Vector3((Math.random() - 0.5) * 0.02, -0.08, (Math.random() - 0.5) * 0.02);
+
+  // اخفي المرحلة الأولى من الموديل
+  if (firstStage) firstStage.visible = false;
+
+  // فعّل نسخة المرحلة الساقطة
+  lowerStage.visible = true;
+  lowerStage.position.copy(firstStage.getWorldPosition(new THREE.Vector3()));
+  lowerStage.scale.copy(firstStage.scale);
+
+  lowerStage.userData.velocity = new THREE.Vector3(
+    (Math.random() - 0.5) * 0.02,
+    -0.08,
+    (Math.random() - 0.5) * 0.02
+  );
 }
+
+
 
 // docking detection (بسيط: لو قرب المسافة أقل من threshold)
 function checkDocking() {
@@ -404,60 +386,61 @@ renderer.setAnimationLoop(() => {
   controls.update();
   drawStars(performance.now());
 
-  // Animate flame (حركة نبض للشفافية والحجم)
-  if (flameSprite.visible) {
+  if (launch && rocket) {
+    const tSec = (performance.now() - startTime) / 1000;
+
+    // تحديث السرعة والارتفاع
+    const climbSpeed = 0.04 + Math.min(tSec * 0.0025, 0.3);
+    rocket.position.y += climbSpeed;
+    altEl.textContent = (rocket.position.y / simScale).toFixed(1);
+    velEl.textContent = (climbSpeed * 60).toFixed(1);
+    timeEl.textContent = tSec.toFixed(1);
+
+    // ===== تحديث المراحل =====
+    if (stage === 0) {
+      stage = 1;
+      statusbar.textContent = "🚀 الإقلاع جاري...";
+    } else if (stage === 1 && tSec >= timings.stage1) {
+      stage = 2;
+      statusbar.textContent = "🔻 انفصال المرحلة الأولى";
+      separateStage();
+    } else if (stage === 2 && tSec >= timings.stage2) {
+      stage = 3;
+      statusbar.textContent = "🪐 انفصال الغطاء";
+      if (fairing) fairing.visible = false;
+    } else if (stage === 3 && tSec >= timings.stage3) {
+      stage = 4;
+      statusbar.textContent = "🔗 التوجه نحو المحطة الدولية";
+    }
+
+    // فصل المرحلة السفلى بعد انفصال المرحلة الأولى
+if (separated && lowerStage) {
+  lowerStage.position.add(lowerStage.userData.velocity);
+  lowerStage.rotation.x += 0.02;
+  lowerStage.rotation.z += 0.01;
+  lowerStage.userData.velocity.y -= 0.0009; // تأثير "الجاذبية"
+  
+  if (lowerStage.position.y < -200) {
+    scene.remove(lowerStage);
+    lowerStage = null;
+  }
+}
+
+
+
+    checkDocking();
+  }
+
+  // تحديث شعلة المحرك
+  if (flameSprite.visible && rocket) {
     const t = performance.now() / 100;
     flameMaterial.opacity = 0.6 + 0.4 * Math.abs(Math.sin(t));
     const scaleFactor = 1 + Math.abs(Math.sin(t)) * 0.6;
     flameSprite.scale.set(1.2 * scaleFactor, 2.4 * scaleFactor, 1);
-    // ضع الشعلة تحت الصاروخ مباشرة (تتبّع)
-    if (rocket) {
-      const worldPos = new THREE.Vector3();
-      rocket.getWorldPosition(worldPos);
-      flameSprite.position.set(worldPos.x, worldPos.y - 1.6 * rocket.scale.y, worldPos.z);
-    }
+    const worldPos = new THREE.Vector3();
+    rocket.getWorldPosition(worldPos);
+    flameSprite.position.set(worldPos.x, worldPos.y - 1.6 * rocket.scale.y, worldPos.z);
   }
-
-  // Simulation progression أثناء الإقلاع
-  if (launch && rocket) {
-    const tSec = (performance.now() - startTime) / 1000;
-    // سرعة بدائية تزداد تدريجيًا
-    const climbSpeed = 0.04 + Math.min(tSec * 0.0025, 0.3); // وحدات/frame تقريبية
-    rocket.position.y += climbSpeed;
-    altEl.textContent = (rocket.position.y / simScale).toFixed(1); // نعرض كمّية بالـ km (عكس المقياس)
-    velEl.textContent = (climbSpeed * 60).toFixed(1);
-    timeEl.textContent = tSec.toFixed(1);
-
-    // move lowerStage مع rocket حتى وقت الفصل
-    if (!separated && lowerStage) {
-      lowerStage.position.set(0, rocket.position.y - 1.1, 0);
-    }
-
-    // مثال: فصل المرحلة بعد ارتفاع معين (مثلاً بعد 18 ثانية أو ارتفاع معين)
-    if (!separated && tSec > 18) {
-      separateStage();
-    }
-  }
-
-  // إذا فصلنا المرحلة، حركها بشكل منفصل (بعد الانفصال تتحرك وتتلاشى)
-  if (separated && lowerStage) {
-    // نعمل تحديث للسرعة الموضعية
-    if (!lowerStage.userData.velocity) lowerStage.userData.velocity = new THREE.Vector3(0, -0.08, 0);
-    lowerStage.position.add(lowerStage.userData.velocity);
-    // نضيف تأثير دوران بسيط
-    lowerStage.rotation.x += 0.02;
-    lowerStage.rotation.z += 0.01;
-    // تباطؤ و جاذبية مبسطة
-    lowerStage.userData.velocity.y -= 0.0009; // تأثير "سقوط"
-    // لو ابتعد تحت مستوى معين نمسحه
-    if (lowerStage.position.y < -200) {
-      scene.remove(lowerStage);
-      lowerStage = null;
-    }
-  }
-
-  // تحقق من الالتحام عند الاقتراب
-  checkDocking();
 
   renderer.render(scene, camera);
 });
@@ -519,3 +502,82 @@ pauseBtn.addEventListener("click", () => {
   if (sound.isPlaying) sound.pause(); // ⏸️ إيقاف مؤقت للصوت
 });
 
+ const timings = {
+  stage1: 8,   // بعد 3 ثوانٍ، انفصال المرحلة الأولى
+  stage2: 14,   // بعد 5 ثوانٍ، انفصال الغطاء
+  stage3: 20,   // بعد 7 ثوانٍ، التحرك نحو المحطة
+};
+
+  const climbSpeed = 0.04 + Math.min(tSec * 0.0025, 0.3);
+rocket.position.y += climbSpeed;
+
+
+// new edited part today
+/// start Ahmed Amir
+// ===== التحكم بالكيبورد =====
+// ===== التحكم بالكيبورد (بالـ code بدل key) =====
+const keys = {};
+
+window.addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  e.preventDefault();
+}, true);
+
+window.addEventListener("keyup", (e) => {
+  keys[e.code] = false;
+  e.preventDefault();
+}, true);
+
+
+function handleControls() {
+  if (!rocket) return;
+
+  const moveStep = 0.5;    
+  const rotateStep = 0.005; 
+
+  // --- حركة أمام/خلف في المحور العالمي Z ---
+  if (keys["KeyW"]) rocket.position.z -= moveStep;
+  if (keys["KeyS"]) rocket.position.z += moveStep;
+
+  // --- حركة يسار/يمين في المحور العالمي X ---
+  if (keys["KeyA"]) rocket.position.x -= moveStep;
+  if (keys["KeyD"]) rocket.position.x += moveStep;
+
+  // --- حركة لأعلى/لأسفل في المحور العالمي Y ---
+  if (keys["ArrowUp"]) rocket.position.y += moveStep;
+  if (keys["ArrowDown"]) rocket.position.y -= moveStep;
+
+  // --- لفّ الصاروخ (اللف يفضل زي ما هو) ---
+  if (keys["ArrowRight"]) rocket.rotation.x -= rotateStep;
+  if (keys["ArrowLeft"]) rocket.rotation.x += rotateStep;
+  if (keys["KeyQ"]) rocket.rotation.z += rotateStep;
+  if (keys["KeyE"]) rocket.rotation.z -= rotateStep;
+}
+
+// التحكم بالأزرار على الشاشة
+document.querySelectorAll(".ctrl-btn").forEach((btn) => {
+  const key = btn.dataset.key;
+
+  // لما يدوس على الزر
+  btn.addEventListener("mousedown", () => {
+    keys[key] = true;
+  });
+  btn.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    keys[key] = true;
+  });
+
+  // لما يشيل ايده
+  btn.addEventListener("mouseup", () => {
+    keys[key] = false;
+  });
+  btn.addEventListener("mouseleave", () => {
+    keys[key] = false;
+  });
+  btn.addEventListener("touchend", () => {
+    keys[key] = false;
+  });
+});
+
+/// end Ahmed Amir
+// new edited part today
