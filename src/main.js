@@ -474,7 +474,7 @@ renderer.setAnimationLoop(() => {
     const tSec = (performance.now() - startTime) / 1000;
 
     // تحديث السرعة والارتفاع
-    const climbSpeed = 0.44 + Math.min(tSec * 0.0025, 0.3);
+    const climbSpeed = 0.04 + Math.min(tSec * 0.0025, 0.3);
     rocket.position.y += climbSpeed;
     altEl.textContent = (rocket.position.y / simScale).toFixed(1);
     velEl.textContent = (climbSpeed * 60).toFixed(1);
