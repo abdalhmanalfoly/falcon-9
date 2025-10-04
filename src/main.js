@@ -17,6 +17,54 @@ const flameSpriteEl = document.getElementById("flameSprite"); // optional image 
 const focusISSBtn = document.getElementById("focusISSBtn");
 const focusRocketBtn = document.getElementById("focusRocketBtn");
 
+// start Ahmed amir
+
+// ======= INPUT CONTROLS =======
+const inputState = {
+  keys: {},
+  moveSpeed: 20.0,   // سرعة أمام/خلف
+  strafeSpeed: 15.0, // يمين/يسار
+  liftSpeed: 15.0,   // طلوع/نزول
+  rotStep: 0.02,     // مقدار الميل (راديان) لكل ضغطة
+};
+
+
+
+let __prevFrameTime = performance.now();
+
+window.addEventListener('keydown', (e) => {
+  inputState.keys[e.code] = true;
+  e.preventDefault();
+}, true);
+
+window.addEventListener('keyup', (e) => {
+  inputState.keys[e.code] = false;
+  e.preventDefault();
+}, true);
+
+function processInput(deltaSec) {
+  if (!rocket) return;
+  const k = inputState.keys;
+
+  // 🔹 الحركة في الفضاء (world space)
+  if (k['KeyW']) rocket.position.add(new THREE.Vector3(0, 0, -1).multiplyScalar(inputState.moveSpeed * deltaSec));
+  if (k['KeyS']) rocket.position.add(new THREE.Vector3(0, 0,  1).multiplyScalar(inputState.moveSpeed * deltaSec));
+  if (k['KeyA']) rocket.position.add(new THREE.Vector3(-1, 0, 0).multiplyScalar(inputState.strafeSpeed * deltaSec));
+  if (k['KeyD']) rocket.position.add(new THREE.Vector3( 1, 0, 0).multiplyScalar(inputState.strafeSpeed * deltaSec));
+
+  // 🔹 تحريك رأسي
+  if (k['ArrowUp'])   rocket.position.add(new THREE.Vector3(0,  1, 0).multiplyScalar(inputState.liftSpeed * deltaSec));
+  if (k['ArrowDown']) rocket.position.add(new THREE.Vector3(0, -1, 0).multiplyScalar(inputState.liftSpeed * deltaSec));
+
+  // 🔹 الميلان (تراكمي)
+  if (k['ArrowRight']) rocket.rotation.x -= inputState.rotStep;  // ميل للأمام
+  if (k['ArrowLeft'])  rocket.rotation.x += inputState.rotStep;  // ميل للخلف
+  if (k['KeyQ'])       rocket.rotation.z += inputState.rotStep;  // ميل لليسار
+  if (k['KeyE'])       rocket.rotation.z -= inputState.rotStep;  // ميل لليمين
+}
+
+//end Ahmed amir
+
 // زرار يركز على المحطة
 focusISSBtn.addEventListener("click", () => {
   if (station) {
@@ -42,6 +90,35 @@ focusRocketBtn.addEventListener("click", () => {
     controls.update();
   }
 });
+
+// start Ahmed amir
+// ربط أزرار الموقع بالتحكم
+function initControlButtons() {
+  const buttons = document.querySelectorAll(".ctrl-btn[data-key]");
+
+  buttons.forEach(btn => {
+    const key = btn.dataset.key;
+
+    btn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      inputState.keys[key] = true;
+      btn.classList.add("active");
+    });
+
+    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => {
+      btn.addEventListener(ev, (e) => {
+        e.preventDefault();
+        inputState.keys[key] = false;
+        btn.classList.remove("active");
+      });
+    });
+  });
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  initControlButtons();
+});
+//end Ahmed amir
 
 
 // تهيئة أزرار
@@ -386,11 +463,18 @@ renderer.setAnimationLoop(() => {
   controls.update();
   drawStars(performance.now());
 
+// start ahmed amir
+  const now = performance.now();
+  const deltaSec = Math.min((now - __prevFrameTime) / 1000, 0.05);
+  __prevFrameTime = now;
+  processInput(deltaSec);
+   // end ahmed amir
+  
   if (launch && rocket) {
     const tSec = (performance.now() - startTime) / 1000;
 
     // تحديث السرعة والارتفاع
-    const climbSpeed = 0.04 + Math.min(tSec * 0.0025, 0.3);
+    const climbSpeed = 0.44 + Math.min(tSec * 0.0025, 0.3);
     rocket.position.y += climbSpeed;
     altEl.textContent = (rocket.position.y / simScale).toFixed(1);
     velEl.textContent = (climbSpeed * 60).toFixed(1);
@@ -510,74 +594,3 @@ pauseBtn.addEventListener("click", () => {
 
   const climbSpeed = 0.04 + Math.min(tSec * 0.0025, 0.3);
 rocket.position.y += climbSpeed;
-
-
-// new edited part today
-/// start Ahmed Amir
-// ===== التحكم بالكيبورد =====
-// ===== التحكم بالكيبورد (بالـ code بدل key) =====
-const keys = {};
-
-window.addEventListener("keydown", (e) => {
-  keys[e.code] = true;
-  e.preventDefault();
-}, true);
-
-window.addEventListener("keyup", (e) => {
-  keys[e.code] = false;
-  e.preventDefault();
-}, true);
-
-
-function handleControls() {
-  if (!rocket) return;
-
-  const moveStep = 0.5;    
-  const rotateStep = 0.005; 
-
-  // --- حركة أمام/خلف في المحور العالمي Z ---
-  if (keys["KeyW"]) rocket.position.z -= moveStep;
-  if (keys["KeyS"]) rocket.position.z += moveStep;
-
-  // --- حركة يسار/يمين في المحور العالمي X ---
-  if (keys["KeyA"]) rocket.position.x -= moveStep;
-  if (keys["KeyD"]) rocket.position.x += moveStep;
-
-  // --- حركة لأعلى/لأسفل في المحور العالمي Y ---
-  if (keys["ArrowUp"]) rocket.position.y += moveStep;
-  if (keys["ArrowDown"]) rocket.position.y -= moveStep;
-
-  // --- لفّ الصاروخ (اللف يفضل زي ما هو) ---
-  if (keys["ArrowRight"]) rocket.rotation.x -= rotateStep;
-  if (keys["ArrowLeft"]) rocket.rotation.x += rotateStep;
-  if (keys["KeyQ"]) rocket.rotation.z += rotateStep;
-  if (keys["KeyE"]) rocket.rotation.z -= rotateStep;
-}
-
-// التحكم بالأزرار على الشاشة
-document.querySelectorAll(".ctrl-btn").forEach((btn) => {
-  const key = btn.dataset.key;
-
-  // لما يدوس على الزر
-  btn.addEventListener("mousedown", () => {
-    keys[key] = true;
-  });
-  btn.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    keys[key] = true;
-  });
-
-  // لما يشيل ايده
-  btn.addEventListener("mouseup", () => {
-    keys[key] = false;
-  });
-  btn.addEventListener("mouseleave", () => {
-    keys[key] = false;
-  });
-  btn.addEventListener("touchend", () => {
-    keys[key] = false;
-  });
-});
-
-/// end Ahmed Amir
-// new edited part today
