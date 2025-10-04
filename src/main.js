@@ -190,77 +190,75 @@ controls.enableDamping = true;
 controls.target.set(0, 3, 0);
 
 // ===== الأرضية و منصة الاطلاق =====
+// ===== منصة الإطلاق الجديدة =====
 function createLaunchPad() {
-// أرضية خضراء ممتدة (العشب أو منطقة الإطلاق)
-// 🔹 أرضية ضخمة (موقع الإطلاق)
-const groundGeo = new THREE.PlaneGeometry(2000, 2000); 
-const groundMat = new THREE.MeshStandardMaterial({
-  color: 0x1a4a1a,  // أخضر غامق (أرضية عشبية)
-  roughness: 0.9,
-});
-const ground = new THREE.Mesh(groundGeo, groundMat);
-ground.rotation.x = -Math.PI / 2;
-ground.position.y = 0;
-scene.add(ground);
+  // مجموعة واحدة تجمع كل أجزاء المنصة
+  const padGroup = new THREE.Group();
 
-// 🔹 قاعدة الإطلاق (أكبر منصة دائرية)
-const padGeo = new THREE.CylinderGeometry(36, 36, 3, 64);
-const padMat = new THREE.MeshStandardMaterial({
-  color: 0x2a2a3a,
-  metalness: 0.5,
-  roughness: 0.6,
-});
-const pad = new THREE.Mesh(padGeo, padMat);
-pad.position.set(0, 1.5, 0);
-scene.add(pad);
+  // 🔹 الأرضية الكبيرة (مستطيلة/عشبية)
+  const groundGeo = new THREE.PlaneGeometry(2000, 2000);
+  const groundMat = new THREE.MeshStandardMaterial({ color: 0x1a4a1a, roughness: 0.9 });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = 0;
+  ground.receiveShadow = true;
+  padGroup.add(ground);
 
-// 🔹 إضافة مباني (Boxes) حوالين المنصة
-function createBuilding(x, z, w = 20, h = 15, d = 20, color = 0xcccccc) {
-  const geo = new THREE.BoxGeometry(w, h, d);
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
-  const building = new THREE.Mesh(geo, mat);
-  building.position.set(x, h / 2, z);
-  scene.add(building);
-  return building;
+  // 🔹 القرص الأسود الأساسي (قاعدة المنصة)
+  const padRadius = 190; // نصف قطر المنصة
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9, metalness: 0.05 });
+  const baseGeom = new THREE.CylinderGeometry(padRadius, padRadius, 1, 64);
+  const base = new THREE.Mesh(baseGeom, baseMat);
+  base.position.y = 0.5;
+  base.castShadow = true;
+  base.receiveShadow = true;
+  padGroup.add(base);
+
+  // 🔹 الإطار الأبيض حول المنصة
+  const rimGeom = new THREE.RingGeometry(padRadius - 0.5, padRadius + 0.3, 128);
+  const rimMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+  const rim = new THREE.Mesh(rimGeom, rimMat);
+  rim.rotation.x = -Math.PI / 2;
+  rim.position.y = 1.01;
+  padGroup.add(rim);
+
+  // 🔹 حلقتين صفرا قرب المركز
+  const yRingMat = new THREE.MeshStandardMaterial({ color: 0xffd100, roughness: 0.6 });
+  const ring1 = new THREE.Mesh(new THREE.RingGeometry(2.6, 3.2, 64), yRingMat);
+  ring1.rotation.x = -Math.PI / 2;
+  ring1.position.y = 1.02;
+  padGroup.add(ring1);
+
+  const ring2 = new THREE.Mesh(new THREE.RingGeometry(3.6, 4.2, 64), yRingMat);
+  ring2.rotation.x = -Math.PI / 2;
+  ring2.position.y = 1.02;
+  padGroup.add(ring2);
+
+  // 🔹 خطين متقاطعين (علامة + صفراء)
+  const lineWidth = 0.5;
+  const lineLength = padRadius * 2 + 2;
+  const lineGeom = new THREE.BoxGeometry(lineLength, 0.05, lineWidth);
+  const lineMat = new THREE.MeshStandardMaterial({ color: 0xffd100, roughness: 0.6 });
+  const lineA = new THREE.Mesh(lineGeom, lineMat);
+  lineA.position.set(0, 1.02, 0);
+  padGroup.add(lineA);
+
+  const lineB = lineA.clone();
+  lineB.rotation.y = Math.PI / 2;
+  padGroup.add(lineB);
+
+  // 🔹 قرص صغير أسود في المنتصف
+  const centerRadius = 1.2;
+  const centerGeom = new THREE.CylinderGeometry(centerRadius, centerRadius, 0.5, 32);
+  const centerMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.95 });
+  const center = new THREE.Mesh(centerGeom, centerMat);
+  center.position.y = 0.75;
+  padGroup.add(center);
+
+  // أضف المجموعة للمشهد
+  scene.add(padGroup);
 }
 
-// مباني حول القاعدة
-createBuilding(80, 40, 30, 20, 30, 0xbbbbbb);  // مبنى رئيسي
-createBuilding(-100, -60, 40, 25, 25, 0x999999); // مبنى آخر
-createBuilding(120, -100, 25, 18, 25, 0xffffff); // مبنى أبيض صغير
-createBuilding(-150, 90, 35, 22, 30, 0xaaaaaa);  // مبنى دعم
-
-// 🔹 إضاءة إضافية عشان توضح المباني
-const hemiLight = new THREE.HemisphereLight(0xeeeeff, 0x444444, 0.4);
-hemiLight.position.set(0, 200, 0);
-scene.add(hemiLight);
-
-  // برج إطلاق مبسط (هياكل الدعم)
-  const towerMat = new THREE.MeshStandardMaterial({ color: 0x222633, metalness: 0.8, roughness: 0.3 });
-  const towerGeo = new THREE.BoxGeometry(0.6, 6, 0.6);
-  const positions = [
-    [4.5, 3.3, 4.5],
-    [-4.5, 3.3, 4.5],
-    [4.5, 3.3, -4.5],
-    [-4.5, 3.3, -4.5],
-  ];
-  positions.forEach((p) => {
-    const b = new THREE.Mesh(towerGeo, towerMat);
-    b.position.set(p[0], p[1], p[2]);
-    scene.add(b);
-  });
-
-  // علامات وإضاءات صغيرة حول المنصة
-  for (let i = 0; i < 8; i++) {
-    const lightGeo = new THREE.CircleGeometry(0.3, 12);
-    const lightMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
-    const l = new THREE.Mesh(lightGeo, lightMat);
-    const ang = (i / 8) * Math.PI * 2;
-    l.rotation.x = -Math.PI / 2;
-    l.position.set(Math.cos(ang) * 5.2, 0.61, Math.sin(ang) * 5.2);
-    scene.add(l);
-  }
-}
 createLaunchPad();
 
 function createStars(count) {
